@@ -1,9 +1,12 @@
+from datetime import datetime, timedelta
+
+import bcrypt
 import jwt
 
-from src.config import app_settings
+from app.config import app_settings
 
 
-class JWTAuth:
+class AuthUtils:
     def __init__(
         self,
         public_key: str = app_settings.auth.public_key_path.read_text(),
@@ -20,6 +23,10 @@ class JWTAuth:
         self,
         payload: dict,
     ) -> str:
+        payload["iat"] = datetime.utcnow()
+        payload["exp"] = payload["iat"] + timedelta(
+            minutes=self._token_expiration_minutes
+        )
         return jwt.encode(
             payload=payload,
             key=self._private_key,
@@ -36,5 +43,19 @@ class JWTAuth:
             algorithms=[self._algorithm],
         )
 
+    @staticmethod
+    def hash_password(password: str) -> bytes:
+        return bcrypt.hashpw(
+            password=password.encode(),
+            salt=bcrypt.gensalt(),
+        )
 
-jwt_auth_utils = JWTAuth()
+    @staticmethod
+    def compare_passwords(password: bytes, hashed_password: bytes) -> bool:
+        return bcrypt.checkpw(
+            password=password,
+            hashed_password=hashed_password,
+        )
+
+
+auth_utils = AuthUtils()
